@@ -1,0 +1,29 @@
+/* ssg example site stylesheet (static asset, copied verbatim). */
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 42rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  line-height: 1.6;
+  color: #222;
+}
+
+pre {
+  background: #f4f4f4;
+  padding: 0.75rem;
+  border-radius: 4px;
+  overflow: auto;
+}
+
+code {
+  background: #f4f4f4;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+blockquote {
+  border-left: 4px solid #ccc;
+  margin-left: 0;
+  padding-left: 1rem;
+  color: #555;
+}
