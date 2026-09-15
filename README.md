@@ -13,8 +13,9 @@ non-Markdown file through verbatim as a static asset.
 python -m ssg build example dist
 ```
 
-Renders the included `example/` site (4 posts + a couple of static assets)
-into `dist/`.
+Renders the included `example/` site (4 posts + a welcome page and two static
+assets) into `dist/`. The repository includes the generated `dist/` snapshot;
+rerun the command after changing anything under `example/`.
 
 ## Layout
 

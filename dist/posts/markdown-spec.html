@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Markdown the spec way</title>
+</head>
+<body>
+<h1>Markdown the spec way</h1>
+<p>ssg implements a strict subset of CommonMark 0.31.2. Here are the constructs
+it supports, straight from the spec.</p>
+<h2>Headings</h2>
+<p>Levels 1 through 6 use <code>#</code> through <code>######</code>.</p>
+<h3>Level three heading</h3>
+<h2>Emphasis and strong</h2>
+<ul>
+<li><code>*single asterisks*</code> becomes <em>emphasis</em></li>
+<li><code>_underscores_</code> also become <em>emphasis</em></li>
+<li><code>**double asterisks**</code> become <strong>strong</strong></li>
+<li><code>***triple***</code> becomes <em><strong>strong emphasis</strong></em></li>
+</ul>
+<h2>Code</h2>
+<p>Inline code is written with backticks: <code>a &lt; b &amp; c</code> is escaped properly.</p>
+<p>Fenced blocks carry a language class:</p>
+<pre><code class="language-python">def greet(name):
+    return f&quot;hello, {name}&quot;
+</code></pre>
+<h2>Ordered lists</h2>
+<ol start="3">
+<li>Third item (the start number is preserved)</li>
+<li>Fourth item</li>
+</ol>
+<h2>Block quotes</h2>
+<blockquote>
+<p>Everything inside here is quoted.</p>
+<p>A second quoted paragraph.</p>
+</blockquote>
+</body>
+</html>
