@@ -1,0 +1,4 @@
+# Runtime dependencies for ssg. The generator core is stdlib-only; Pygments is
+# an optional dependency used only when the renderer is called with
+# highlight=True (fenced-code syntax highlighting).
+Pygments>=2.18.0

@@ -13,6 +13,7 @@ its own: tight-vs-loose list wrappers, ordered-list ``start``, the
 
 import glob
 import os
+import sys
 
 import pytest
 
@@ -160,3 +161,67 @@ def test_em_double_and_strong_flag_in_ast():
 def test_render_document_accepts_block_ast():
     doc = blocks.parse("# title\n")
     assert renderer.render_document(doc) == "<h1>title</h1>\n"
+
+
+# ---------------------------------------------------------------------------
+# Optional Pygments syntax highlighting (highlight= keyword)
+# ---------------------------------------------------------------------------
+
+def test_highlight_disabled_by_default():
+    """highlight defaults to False -> byte-identical to the legacy renderer."""
+    src = "```python\nx = 1\n```\n"
+    no_hl = renderer.render(src, highlight=False)
+    assert renderer.render(src) == no_hl          # default arg matches explicit False
+    assert "<span class=" not in no_hl            # and emits no token spans
+
+
+def test_highlight_enabled_emits_token_spans_inside_code():
+    """With highlight=True the outer <pre><code class=...> contract is kept
+    and Pygments token spans go inside <code>."""
+    out = renderer.render("```python\nx = 1\n```\n", highlight=True)
+    assert out.startswith('<pre><code class="language-python">')
+    assert out.endswith("</code></pre>\n")
+    inner = out[len('<pre><code class="language-python">'):-len("</code></pre>\n")]
+    assert '<span class="' in inner               # spans live between <code></code>
+    assert inner.endswith("\n")                   # content trailing newline kept
+
+
+def test_highlight_unknown_language_falls_back_to_literal():
+    """Unknown lexer -> same escaped-literal output as the legacy path, no raise."""
+    out = renderer.render("```doesnotexist\nx < y &\n```\n", highlight=True)
+    assert '<span' not in out
+    assert out == ('<pre><code class="language-doesnotexist">'
+                   "x &lt; y &amp;\n</code></pre>\n")
+
+
+def test_highlight_no_language_falls_back_to_literal():
+    """No info string -> fallback unchanged (no class, no spans)."""
+    out = renderer.render("```\nx < b\n```\n", highlight=True)
+    assert '<span' not in out
+    assert out == "<pre><code>x &lt; b\n</code></pre>\n"
+
+
+def test_highlight_escapes_untrusted_fence_content():
+    """Fence content is untrusted: HTML chars must be escaped in the output."""
+    src = "```python\n<script>alert(1)</script> & \"q\"\n```\n"
+    out = renderer.render(src, highlight=True)
+    assert "&lt;" in out and "&amp;" in out
+    assert "<script>" not in out
+    assert '<span class="' in out                 # Pygments path still active
+
+
+def test_highlight_missing_pygments_does_not_raise(monkeypatch):
+    """Even without Pygments importable, highlight=True never raises."""
+    monkeypatch.setitem(sys.modules, "pygments", None)
+    out = renderer.render("```python\nx < y\n```\n", highlight=True)
+    assert '<span' not in out
+    assert out == '<pre><code class="language-python">x &lt; y\n</code></pre>\n'
+
+
+def test_render_document_highlight_wiring():
+    """render_document(doc, highlight=True) honours the flag on the AST path."""
+    doc = blocks.parse("```python\nx = 1\n```\n")
+    out = renderer.render_document(doc, highlight=True)
+    assert out.startswith('<pre><code class="language-python">')
+    assert '<span class="' in out
+    assert '<span class="' not in renderer.render_document(doc)  # default off
