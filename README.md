@@ -49,6 +49,26 @@ highlighting token spans; unknown languages fall back to the plain literal.
 Run `build --highlight` over `example/` to reproduce the site already shipped
 under `dist/` (that snapshot was generated with `--highlight`).
 
+### Development server with hot reload
+
+```bash
+.venv/bin/python -m ssg serve example                # http://127.0.0.1:8000
+.venv/bin/python -m ssg serve example --port 8080    # different port
+.venv/bin/python -m ssg serve example --no-reload    # plain static server
+.venv/bin/python -m ssg serve example --out /tmp/site
+```
+
+`serve <in>` renders the site to a dedicated temp directory (so it never
+touches the committed `dist/` snapshot — pass `--out` to choose the output
+location) and serves it over `http.server`. By default it watches `<in>` with
+a stdlib-only mtime poll: editing any `.md` or static asset rebuilds and a
+small injected client long-polls a `/__ssg/reload` route, then reloads the
+browser — no server restart needed. `--no-reload` disables the watcher, the
+reload route, and the injected client, serving the site statically.
+
+Options: `--host` (default `127.0.0.1`), `--port` (default `8000`), `--out`,
+`--no-reload`.
+
 ## Project layout
 
 ```
@@ -56,7 +76,8 @@ ssg/
   blocks.py    block-level parser (SPEC.md feature set -> block AST)
   inlines.py   inline parser (emphasis, strong, code, links)
   render.py    AST -> HTML
-  cli.py       "python -m ssg build <in> <out>" entrypoint
+  cli.py       "python -m ssg build <in> <out>" / "serve" entrypoint
+  serve.py     dev HTTP server with hot reload (http.server + stdlib watch)
 tests/
   test_blocks.py / test_inline.py / test_render.py   unit tests per module
   test_cli_e2e.py                                    end-to-end build test
