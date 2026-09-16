@@ -1,12 +1,15 @@
 """Command-line interface for ssg.
 
-Currently exposes a single ``build`` command::
+Exposes two commands::
 
     python -m ssg build <in> <out>
+    python -m ssg serve <in> [--port PORT] [--host HOST] [--out OUT] [--no-reload]
 
-which walks ``<in>`` recursively, rendering every ``.md`` file to a matching
+``build`` walks ``<in>`` recursively, rendering every ``.md`` file to a matching
 ``<path>.html`` under ``<out>`` and copying every non-Markdown file verbatim
-(static assets, preserving their relative paths).
+(static assets, preserving their relative paths).  ``serve`` composes ``build``
+into a live development server with optional hot reload (see
+:mod:`ssg.serve`).
 """
 
 import argparse
@@ -16,8 +19,9 @@ import shutil
 import sys
 
 from ssg import blocks, render
+from ssg import serve as serve_mod
 
-__all__ = ["build", "build_file", "page_title", "main"]
+__all__ = ["build", "build_file", "page_title", "serve", "main"]
 
 _HTML_DOC = (
     "<!DOCTYPE html>\n"
@@ -116,6 +120,22 @@ def _build_cmd(args):
         summary["pages"], summary["assets"], summary["out_dir"]))
 
 
+def serve(input_dir, host="127.0.0.1", port=8000, out_dir=None, no_reload=False):
+    """Run a development HTTP server over a built copy of ``input_dir``.
+
+    Thin wrapper over :func:`ssg.serve.serve` with the CLI's defaults.  Blocks
+    until the server is shut down.  See the module docstring for the full
+    hot-reload semantics.
+    """
+    return serve_mod.serve(input_dir, host=host, port=port,
+                           out_dir=out_dir, no_reload=no_reload)
+
+
+def _serve_cmd(args):
+    serve(args.input, host=args.host, port=args.port,
+          out_dir=args.output, no_reload=args.no_reload)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="python -m ssg",
@@ -129,6 +149,19 @@ def main(argv=None):
         "--highlight", action="store_true",
         help="syntax-highlight fenced code blocks with Pygments (optional)")
     p_build.set_defaults(func=_build_cmd)
+
+    p_serve = sub.add_parser("serve",
+                             help="run a development server with hot reload")
+    p_serve.add_argument("input", help="input directory of Markdown + assets")
+    p_serve.add_argument("--port", type=int, default=8000,
+                         help="port to listen on (default: 8000)")
+    p_serve.add_argument("--host", default="127.0.0.1",
+                         help="host/interface to bind (default: 127.0.0.1)")
+    p_serve.add_argument("--out", dest="output", default=None,
+                         help="serve output dir (default: a fresh temp dir)")
+    p_serve.add_argument("--no-reload", action="store_true",
+                         help="serve statically; disable watching + reload")
+    p_serve.set_defaults(func=_serve_cmd)
 
     args = parser.parse_args(argv)
     return args.func(args)
