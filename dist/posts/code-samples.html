@@ -11,6 +11,10 @@ never inline-parsed. The title below is code, not emphasis.</p>
 <pre><code class="language-text">*not emphasis* inside a fence
 #not a heading either
 </code></pre>
+<p>And with <code>--highlight</code>, a recognized language like Python gets token spans:</p>
+<pre><code class="language-python"><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"hi, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span>
+</code></pre>
 <h2>Hard and soft breaks</h2>
 <p>A  backslash followed by a newline forces a hard break:
 one line<br />

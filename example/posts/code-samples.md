@@ -8,6 +8,13 @@ never inline-parsed. The title below is code, not emphasis.
 #not a heading either
 ```
 
+And with `--highlight`, a recognized language like Python gets token spans:
+
+```python
+def greet(name):
+    return f"hi, {name}"
+```
+
 ## Hard and soft breaks
 
 A  backslash followed by a newline forces a hard break:

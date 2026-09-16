@@ -123,3 +123,89 @@ def test_cli_build_errors_on_missing_input(tmp_path):
     )
     assert result.returncode != 0
     assert "not found" in result.stderr
+
+
+def _write_site(tmp_path, body):
+    """Write a one-page markdown site and return its input dir path."""
+    site = tmp_path / "site"
+    site.mkdir()
+    (site / "index.md").write_text(body, encoding="utf-8")
+    return str(site)
+
+
+_HIGHLIGHT_PAGE = (
+    "# Hi\n"
+    "\n"
+    "A python fence:\n"
+    "\n"
+    "```python\n"
+    "def greet(name):\n"
+    "    return 'hi ' + name\n"
+    "```\n"
+)
+
+
+def test_cli_build_without_highlight_has_no_token_spans(tmp_path):
+    """Default build (`--highlight` absent) emits no Pygments token spans."""
+    out = tmp_path / "dist"
+    env = dict(os.environ)
+    env["PYTHONPATH"] = ROOT + os.pathsep + env.get("PYTHONPATH", "")
+    subprocess.run(
+        [sys.executable, "-m", "ssg", "build",
+         _write_site(tmp_path, _HIGHLIGHT_PAGE), str(out)],
+        capture_output=True, check=True, env=env,
+    )
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert '<span class="' not in html
+    # fenced body stays a literal (HTML-escaped)
+    assert "def greet(name):" in html
+
+
+def test_cli_build_with_highlight_emits_token_spans(tmp_path):
+    """`--highlight` renders recognized fenced code with Pygments spans."""
+    out = tmp_path / "dist"
+    env = dict(os.environ)
+    env["PYTHONPATH"] = ROOT + os.pathsep + env.get("PYTHONPATH", "")
+    subprocess.run(
+        [sys.executable, "-m", "ssg", "build", "--highlight",
+         _write_site(tmp_path, _HIGHLIGHT_PAGE), str(out)],
+        capture_output=True, check=True, env=env,
+    )
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert 'class="language-python"' in html
+    assert '<span class="' in html
+    # the literal still renders (as a token)
+    assert "def" in html
+
+
+def test_cli_build_with_highlight_falls_back_on_unknown_lang(tmp_path):
+    """Unknown fenced language under `--highlight` falls back to the literal."""
+    out = tmp_path / "dist"
+    env = dict(os.environ)
+    env["PYTHONPATH"] = ROOT + os.pathsep + env.get("PYTHONPATH", "")
+    body = "# T\n\n```madeuplang999\nraw <content>&\n```\n"
+    subprocess.run(
+        [sys.executable, "-m", "ssg", "build", "--highlight",
+         _write_site(tmp_path, body), str(out)],
+        capture_output=True, check=True, env=env,
+    )
+    html = (out / "index.html").read_text(encoding="utf-8")
+    # escaped literal fallback, no token spans
+    assert "<span" not in html
+    assert "raw &lt;content&gt;&amp;" in html
+
+
+def test_cli_build_highlight_flag_matches_default_output_structure(tmp_path):
+    """Highlighted page keeps the same full-HTML-document wrapper."""
+    out = tmp_path / "dist"
+    env = dict(os.environ)
+    env["PYTHONPATH"] = ROOT + os.pathsep + env.get("PYTHONPATH", "")
+    subprocess.run(
+        [sys.executable, "-m", "ssg", "build", "--highlight",
+         _write_site(tmp_path, _HIGHLIGHT_PAGE), str(out)],
+        capture_output=True, check=True, env=env,
+    )
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert html.startswith("<!DOCTYPE html>")
+    assert "<h1>Hi</h1>" in html
+    assert "<pre><code" in html and "</code></pre>" in html

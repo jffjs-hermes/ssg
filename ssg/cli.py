@@ -57,13 +57,18 @@ def page_title(doc):
     return ""
 
 
-def build_file(md_path, html_path):
-    """Render one Markdown file to a full HTML page at ``html_path``."""
+def build_file(md_path, html_path, highlight=False):
+    """Render one Markdown file to a full HTML page at ``html_path``.
+
+    ``highlight`` is passed through to :func:`ssg.render.render`; when True,
+    fenced code blocks matching a Pygments lexer get syntax-highlighted token
+    spans (see :func:`ssg.render.render_document`).
+    """
     with open(md_path, encoding="utf-8") as f:
         text = f.read()
     doc = blocks.parse(text)
     title = page_title(doc) or os.path.splitext(os.path.basename(md_path))[0]
-    body = render.render(text)
+    body = render.render(text, highlight=highlight)
     page = _HTML_DOC.format(title=_escape(title), body=body)
     os.makedirs(os.path.dirname(html_path), exist_ok=True)
     with open(html_path, "w", encoding="utf-8") as f:
@@ -71,12 +76,14 @@ def build_file(md_path, html_path):
     return html_path
 
 
-def build(in_dir, out_dir):
+def build(in_dir, out_dir, highlight=False):
     """Build a static site: render Markdown pages and copy static assets.
 
     Walks ``in_dir``; every ``*.md`` file becomes ``{out_dir}/{rel}.html`` and
     every other file is copied byte-for-byte to ``{out_dir}/{rel}`` (relative
-    paths preserved).  Returns a summary dict.
+    paths preserved).  ``highlight`` is passed through to
+    :func:`build_file` for optional Pygments fenced-code highlighting.
+    Returns a summary dict.
     """
     in_dir = os.path.abspath(in_dir)
     out_dir = os.path.abspath(out_dir)
@@ -93,7 +100,8 @@ def build(in_dir, out_dir):
             rel = os.path.relpath(src, in_dir)
             dst = os.path.join(out_dir, rel)
             if name.lower().endswith(".md"):
-                build_file(src, os.path.splitext(dst)[0] + ".html")
+                build_file(src, os.path.splitext(dst)[0] + ".html",
+                           highlight=highlight)
                 pages += 1
             else:
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -103,7 +111,7 @@ def build(in_dir, out_dir):
 
 
 def _build_cmd(args):
-    summary = build(args.input, args.output)
+    summary = build(args.input, args.output, highlight=args.highlight)
     print("Built %d page(s) and copied %d asset(s) to %s" % (
         summary["pages"], summary["assets"], summary["out_dir"]))
 
@@ -117,6 +125,9 @@ def main(argv=None):
     p_build = sub.add_parser("build", help="render a Markdown site")
     p_build.add_argument("input", help="input directory of Markdown + assets")
     p_build.add_argument("output", help="output directory to write the site to")
+    p_build.add_argument(
+        "--highlight", action="store_true",
+        help="syntax-highlight fenced code blocks with Pygments (optional)")
     p_build.set_defaults(func=_build_cmd)
 
     args = parser.parse_args(argv)
