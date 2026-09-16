@@ -26,9 +26,11 @@ class _Renderer:
     fixture corpus expects (no leading blank line, one trailing newline).
     """
 
-    def __init__(self):
+    def __init__(self, highlight=False):
         self.buf = []
         self.last = "\n"
+        self.highlight = highlight
+        self._lexers = None
 
     # -- low-level output ----------------------------------------------
     def lit(self, s):
@@ -98,6 +100,42 @@ class _Renderer:
                 self.tag("/a")
             node = node._next
 
+    # -- optional Pygments highlighting -----------------------------------
+    def _pygments(self):
+        """Import Pygments on first use (lazy, so the CLI stays stdlib-only
+        unless ``highlight=True``).  Returns a 4-tuple of the pygments pieces,
+        or ``None`` when Pygments is not installed so callers fall back."""
+        if self._lexers is not None:
+            return self._lexers
+        try:
+            from pygments import highlight as _hl
+            from pygments.formatters import HtmlFormatter
+            from pygments.lexers import ClassNotFound, get_lexer_by_name
+        except ImportError:
+            self._lexers = None
+            return None
+        self._lexers = (_hl, get_lexer_by_name, ClassNotFound,
+                        HtmlFormatter(nowrap=True))
+        return self._lexers
+
+    def _highlight_code(self, lang, content):
+        """Highlight ``content`` (language ``lang``) to token HTML.
+
+        Returns the Pygments output (already HTML-escaped) or ``None`` when
+        Pygments is unavailable or the lexer is unknown, in which case the
+        caller emits the escaped literal.  Never raises.  Fence content is
+        treated as untrusted: only Pygments' own escaped output is trusted.
+        """
+        pkgs = self._pygments()
+        if pkgs is None:
+            return None
+        _hl, get_lexer_by_name, ClassNotFound, formatter = pkgs
+        try:
+            lexer = get_lexer_by_name(lang)
+        except ClassNotFound:
+            return None
+        return _hl(content, lexer, formatter)
+
     # -- blocks ----------------------------------------------------------
     def _language_class(self, lang):
         if lang.startswith("language-"):
@@ -132,7 +170,13 @@ class _Renderer:
             self.cr()
             self.tag("pre")
             self.tag("code", attrs)
-            self.out(node.content)
+            highlighted = None
+            if self.highlight and node.language:
+                highlighted = self._highlight_code(node.language, node.content)
+            if highlighted is not None:
+                self.lit(highlighted)      # Pygments HTML is pre-escaped
+            else:
+                self.out(node.content)     # escaped-literal fallback
             self.tag("/code")
             self.tag("/pre")
             self.cr()
@@ -175,13 +219,21 @@ class _Renderer:
                 and gp.list_data.get("tight"))
 
 
-def render_document(doc):
-    """Render a parsed block AST (:class:`ssg.blocks.Node`) to an HTML string."""
-    r = _Renderer()
+def render_document(doc, highlight=False):
+    """Render a parsed block AST (:class:`ssg.blocks.Node`) to an HTML string.
+
+    When ``highlight=True``, fenced code blocks whose language matches a
+    Pygments lexer are emitted with syntax-highlighting token spans inside the
+    existing ``<pre><code class=\"language-…\">…</code></pre>`` container (via
+    ``HtmlFormatter(nowrap=True)``).  Unknown/missing lexers and a missing
+    Pygments install fall back to the escaped literal; the default ``False``
+    keeps output byte-identical to the previous release.
+    """
+    r = _Renderer(highlight)
     r.render_block(doc)
     return "".join(r.buf)
 
 
-def render(text):
+def render(text, highlight=False):
     """Parse Markdown ``text`` and render the whole document to HTML."""
-    return render_document(blocks.parse(text))
+    return render_document(blocks.parse(text), highlight=highlight)
