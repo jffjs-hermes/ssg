@@ -12,6 +12,11 @@ is parsed on demand from the raw ``content`` text by :mod:`ssg.inlines` (phase
 2) at render time.
 """
 
+from pygments import highlight as pygments_highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name
+from pygments.util import ClassNotFound
+
 from . import blocks, inlines
 
 __all__ = ["render", "render_document"]
@@ -26,9 +31,10 @@ class _Renderer:
     fixture corpus expects (no leading blank line, one trailing newline).
     """
 
-    def __init__(self):
+    def __init__(self, highlight=False):
         self.buf = []
         self.last = "\n"
+        self.highlight = highlight
 
     # -- low-level output ----------------------------------------------
     def lit(self, s):
@@ -104,6 +110,18 @@ class _Renderer:
             return lang
         return "language-" + lang
 
+    def _render_code(self, node):
+        if self.highlight and node.language:
+            try:
+                lexer = get_lexer_by_name(node.language)
+            except ClassNotFound:
+                pass
+            else:
+                self.lit(pygments_highlight(
+                    node.content, lexer, HtmlFormatter(nowrap=True)))
+                return
+        self.out(node.content)
+
     def render_block(self, node):
         t = node.type
         if t == "document":
@@ -132,7 +150,7 @@ class _Renderer:
             self.cr()
             self.tag("pre")
             self.tag("code", attrs)
-            self.out(node.content)
+            self._render_code(node)
             self.tag("/code")
             self.tag("/pre")
             self.cr()
@@ -175,13 +193,13 @@ class _Renderer:
                 and gp.list_data.get("tight"))
 
 
-def render_document(doc):
+def render_document(doc, highlight=False):
     """Render a parsed block AST (:class:`ssg.blocks.Node`) to an HTML string."""
-    r = _Renderer()
+    r = _Renderer(highlight=highlight)
     r.render_block(doc)
     return "".join(r.buf)
 
 
-def render(text):
+def render(text, highlight=False):
     """Parse Markdown ``text`` and render the whole document to HTML."""
-    return render_document(blocks.parse(text))
+    return render_document(blocks.parse(text), highlight=highlight)

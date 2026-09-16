@@ -93,6 +93,40 @@ def test_fenced_code_no_language():
         "<pre><code>x\n</code></pre>\n")
 
 
+def test_fenced_code_highlighting_is_disabled_by_default():
+    source = "```python\nprint(1)\n```\n"
+    assert renderer.render(source) == (
+        '<pre><code class="language-python">print(1)\n</code></pre>\n')
+
+
+def test_fenced_code_highlighting_adds_pygments_token_spans():
+    source = "```python\nprint(1)\n```\n"
+    assert renderer.render(source, highlight=True) == (
+        '<pre><code class="language-python">'
+        '<span class="nb">print</span><span class="p">(</span>'
+        '<span class="mi">1</span><span class="p">)</span>\n'
+        '</code></pre>\n')
+
+
+def test_render_document_supports_highlighting():
+    doc = blocks.parse("```python\nprint(1)\n```\n")
+    assert '<span class="nb">print</span>' in renderer.render_document(
+        doc, highlight=True)
+
+
+def test_unknown_fenced_language_falls_back_to_escaped_literal():
+    source = "```not-a-real-lexer\n<span>& value\n```\n"
+    assert renderer.render(source, highlight=True) == (
+        '<pre><code class="language-not-a-real-lexer">'
+        '&lt;span&gt;&amp; value\n</code></pre>\n')
+
+
+def test_fenced_code_without_language_falls_back_to_escaped_literal():
+    source = "```\n<span>& value\n```\n"
+    assert renderer.render(source, highlight=True) == (
+        '<pre><code>&lt;span&gt;&amp; value\n</code></pre>\n')
+
+
 def test_fence_content_is_literal_non_inlined():
     # SPEC 2 rule 3: fenced content is never inline-parsed.
     assert "*em*" in render_md("```\n*em*\n```\n")
