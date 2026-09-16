@@ -17,10 +17,14 @@ everything installs into a project-local virtualenv.
 
 ```bash
 python3 -m venv .venv                       # isolated, one-time
-.venv/bin/pip install pytest                # only runtime dep for tests; the
-                                            # generator itself is stdlib-only
+.venv/bin/pip install -r requirements.txt   # tests + optional Pygments
 ```
 
+> The generator core is stdlib-only. `Pygments` (from `requirements.txt`) is an
+> **optional** dependency used only for the `--highlight` build flag — fenced
+> code blocks get syntax-highlighted token spans. Without it, or when `--highlight`
+> is omitted, output is unchanged and nothing extra is required.
+>
 > The bot workers create their own virtualenv inside each card's worktree and
 > install pytest there, so they don't depend on a global install. The command
 > above is yours to run the suite from the repo root.
@@ -28,18 +32,22 @@ python3 -m venv .venv                       # isolated, one-time
 ## Run the tests
 
 ```bash
-.venv/bin/python -m pytest -q               # 175 tests, stdlib-only generator
+.venv/bin/python -m pytest -q               # full suite, stdlib-only generator
 ```
 
 ## Use it
 
 ```bash
 .venv/bin/python -m ssg build example dist  # compile example/ -> dist/
+.venv/bin/python -m ssg build --highlight example dist   # + Pygments highlighting
 ```
 
 `build <in> <out>` walks a markdown directory, renders each page to HTML,
-copying static assets (e.g. `style.css`) alongside. Run it over `example/` to
-reproduce the site already shipped under `dist/`.
+copying static assets (e.g. `style.css`) alongside. With `--highlight`, fenced
+code blocks whose language matches a Pygments lexer are rendered with
+highlighting token spans; unknown languages fall back to the plain literal.
+Run `build --highlight` over `example/` to reproduce the site already shipped
+under `dist/` (that snapshot was generated with `--highlight`).
 
 ## Project layout
 
